@@ -63,8 +63,12 @@ example {x y : ℝ} (h : x ≤ y ∧ x ≠ y) : ¬y ≤ x := by
 example {x y : ℝ} (h : x ≤ y ∧ x ≠ y) : ¬y ≤ x :=
   fun h' ↦ h.right (le_antisymm h.left h')
 
-example {m n : ℕ} (h : m ∣ n ∧ m ≠ n) : m ∣ n ∧ ¬n ∣ m :=
-  sorry
+example {m n : ℕ} (h : m ∣ n ∧ m ≠ n) : m ∣ n ∧ ¬n ∣ m := by
+  constructor
+  · exact h.1
+  · intro h'
+    obtain hc : m = n := dvd_antisymm h.1 h'
+    exact h.2 hc
 
 example : ∃ x : ℝ, 2 < x ∧ x < 4 :=
   ⟨5 / 2, by norm_num, by norm_num⟩
@@ -74,7 +78,7 @@ example (x y : ℝ) : (∃ z : ℝ, x < z ∧ z < y) → x < y := by
   exact lt_trans xltz zlty
 
 example (x y : ℝ) : (∃ z : ℝ, x < z ∧ z < y) → x < y :=
-  fun ⟨z, xltz, zlty⟩ ↦ lt_trans xltz zlty
+  fun ⟨_, xltz, zlty⟩ ↦ lt_trans xltz zlty
 
 example : ∃ x : ℝ, 2 < x ∧ x < 4 := by
   use 5 / 2
@@ -101,15 +105,33 @@ example {x y : ℝ} (h : x ≤ y) : ¬y ≤ x ↔ x ≠ y := by
 example {x y : ℝ} (h : x ≤ y) : ¬y ≤ x ↔ x ≠ y :=
   ⟨fun h₀ h₁ ↦ h₀ (by rw [h₁]), fun h₀ h₁ ↦ h₀ (le_antisymm h h₁)⟩
 
-example {x y : ℝ} : x ≤ y ∧ ¬y ≤ x ↔ x ≤ y ∧ x ≠ y :=
-  sorry
+example {x y : ℝ} : x ≤ y ∧ ¬y ≤ x ↔ x ≤ y ∧ x ≠ y := by
+  constructor <;> push_neg
+  · intro h
+    constructor
+    · exact h.1
+    · intro h'
+      rw [h'] at h
+      exact lt_irrefl y h.2
+  · intro h
+    constructor
+    · exact h.1
+    · exact lt_of_le_of_ne h.1 h.2
 
 theorem aux {x y : ℝ} (h : x ^ 2 + y ^ 2 = 0) : x = 0 :=
-  have h' : x ^ 2 = 0 := by sorry
+  have h' : x ^ 2 = 0 := by linarith [pow_two_nonneg x, pow_two_nonneg y]
   pow_eq_zero h'
 
-example (x y : ℝ) : x ^ 2 + y ^ 2 = 0 ↔ x = 0 ∧ y = 0 :=
-  sorry
+#check pow_two_nonneg
+
+example (x y : ℝ) : x ^ 2 + y ^ 2 = 0 ↔ x = 0 ∧ y = 0 := by
+  constructor
+  · intro h
+    have h₀ : y ^ 2 + x ^ 2 = 0 := by rw [add_comm] at h; exact h
+    exact ⟨aux h, aux h₀⟩
+  · intro h
+    rw [h.1, h.2]
+    ring_nf
 
 section
 
@@ -130,7 +152,9 @@ theorem not_monotone_iff {f : ℝ → ℝ} : ¬Monotone f ↔ ∃ x y, x ≤ y �
   rfl
 
 example : ¬Monotone fun x : ℝ ↦ -x := by
-  sorry
+  rw [not_monotone_iff]
+  use 0, 1
+  norm_num
 
 section
 variable {α : Type*} [PartialOrder α]
@@ -138,7 +162,18 @@ variable (a b : α)
 
 example : a < b ↔ a ≤ b ∧ a ≠ b := by
   rw [lt_iff_le_not_le]
-  sorry
+  constructor
+  · intro h
+    constructor
+    · exact h.1
+    · intro h'
+      have h'' : b ≤ a := le_of_eq (symm h')
+      exact h.2 h''
+  · intro h
+    constructor
+    · exact h.1
+    · intro h'
+      exact h.2 (le_antisymm h.1 h')
 
 end
 
@@ -148,10 +183,15 @@ variable (a b c : α)
 
 example : ¬a < a := by
   rw [lt_iff_le_not_le]
-  sorry
+  intro h
+  exact h.2 h.1
 
 example : a < b → b < c → a < c := by
   simp only [lt_iff_le_not_le]
-  sorry
+  intro h h'
+  constructor
+  · exact le_trans h.1 h'.1
+  · intro h''
+    exact h'.2 (le_trans h'' h.1)
 
 end
